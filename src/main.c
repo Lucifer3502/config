@@ -3,6 +3,7 @@
 #include "hal_fs.h"
 #include "flash_config.h"
 #include "hal_os.h"
+#include "log.h"
 
 
 #define ASSERT_FUNC_RETURN_VALUE(ret) \
@@ -13,11 +14,11 @@
         }\
     }while(0);
 
-static uint8_t g_conf1[32] = "hello world";
-static uint8_t g_conf2[6];
-static uint32_t g_conf3;
-static uint16_t g_conf4;
-static uint8_t g_conf5;
+static uint8_t g_conf1[32] = "hello,world";
+static uint8_t g_conf2[6]= {0x00, 0x01, 0x02, 0x03, 0x04, 0x06};
+static uint32_t g_conf3 = 0x12345678;
+static uint16_t g_conf4 = 0x1234;
+static uint8_t g_conf5 = 0x12;
 
 
 void user_config_init(void)
@@ -43,19 +44,33 @@ void *user_config_task(void *arg)
     return NULL;
 }
 
+void usage(void)
+{
+    /*
+    * when have name value args, it will change the value of the name. 
+    * The name must be in the list which is init in the user_config_init function.
+    */
+    printf("usage:\r\n");
+    printf("    ffs_demo [name value]\r\n");
+}
+
 int main(int argc, char *argv[])
 {
-#if 0
+    
+    if(argc < 3) {
+        usage();
+        return -1;
+    }
+
     ASSERT_FUNC_RETURN_VALUE(hal_fs_init(1024 * 1024));
-#else
-    pthread_t config_thread;
     user_config_init();
     ASSERT_FUNC_RETURN_VALUE(flash_config_init());
-    flash_config_commit(0);
-    
-    pthread_create(&config_thread, NULL, user_config_task, NULL);
-    pthread_join(config_thread, NULL);
-#endif
+    if(flash_config_modify((uint8_t *)argv[1], (uint8_t *)argv[2])) {
+        log_error("modify the config of %s failed.\r\n", argv[1]);
+        return -1;
+    }
+
+    flash_config_commit(1);
     return 0;
 }
 

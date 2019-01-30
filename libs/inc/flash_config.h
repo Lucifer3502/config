@@ -63,6 +63,8 @@ void flash_config_thread(void *arg);
 */
 int32_t flash_config_manage(flash_conf_manager_t *conf);
 
+int32_t flash_config_modify(uint8_t *name, uint8_t *value);
+
 int32_t flash_config_init(void);
 
 

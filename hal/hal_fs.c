@@ -136,16 +136,29 @@ hal_fs_init(uint32_t size)
     uint8_t buf[FFS_SECTOR_SIZE];
     uint32_t sec = size / FFS_SECTOR_SIZE;
     int32_t fd = -1;
+    struct stat stat_info;
+    
     fd = open(g_fs_path, O_CREAT|O_RDWR, S_IRWXU);
     if(fd < 0) {
         log_error("open %s failed\r\n", g_fs_path);
         return -1;
     }
 
+    if(fstat(fd, &stat_info) < 0) {
+        log_error("fstat %s failed\r\n", g_fs_path);
+        close(fd);
+        return -1;
+    }
+    if(size == stat_info.st_size) {
+        close(fd);
+        return 0;
+    }
+    log_debug("Init flash mem\r\n");
     memset(buf, 0xff, FFS_SECTOR_SIZE);
     while(sec--) {
         if(FFS_SECTOR_SIZE != write(fd, buf, FFS_SECTOR_SIZE)) {
             log_error("write failed\r\n");
+            close(fd);
             return -1;
         }
     }

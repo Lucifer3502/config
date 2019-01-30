@@ -153,9 +153,7 @@ flash_config_write(void)
     }
 
     /* write head magic. */
-    
     hal_fs_lseek(&fs, 0);
-    log_debug("write offset = %d, len = %d.\r\n", fs.addr + fs.offset, 2);
     if(hal_fs_write(&fs, (uint8_t *)FLASH_CONFIG_HEAD_TAG, CONFIG_STRLEN(FLASH_CONFIG_HEAD_TAG))) {
         ret = -1;
         goto end;
@@ -229,14 +227,13 @@ flash_config_manage(flash_conf_manager_t *conf)
         g_conf_manager[i].value = conf->value;
         g_conf_manager[i].size = conf->size;
         g_conf_manager[i].type = conf->type;
-        log_debug("manage conf %s\r\n", conf->name);
+        //log_debug("manage conf %s\r\n", conf->name);
         return 0;
     }
 
     log_error("config_manage num > %d.\r\n", FLASH_CONFIG_MAX_NUM);
     return -1;
 }
-
 
 static int32_t FLASH_CONFIG_ATTR
 parse_config_name_value(uint8_t *buf, uint32_t buf_len, uint8_t **name, uint8_t **value)
@@ -265,15 +262,17 @@ _flash_config_read_one(uint8_t *value, flash_conf_manager_t *conf)
     case FLASH_CONF_STRING:{
             if(strncmp((char *)value, conf->value, conf->size)) {
                 strncpy(conf->value, (char *)value, conf->size - 1);
+                g_conf_write_flag = 1;
             }
         }
         break;
 
     case FLASH_CONF_HEX_STR:{
             uint8_t tmp[FLASH_CONFIG_MAX_VALUE_LEN + 4] = {0};
-            //byte2hex(tmp, FLASH_CONFIG_MAX_VALUE_LEN, conf->value, conf->size);
+            byte2hex(tmp, FLASH_CONFIG_MAX_VALUE_LEN, conf->value, conf->size);
             if(strncmp((char *)value, (char *)tmp, conf->size * 2)) {
-                //hex2byte(conf->value, conf->size, value, strlen((char *)value));
+                hex2byte(conf->value, conf->size, value, strlen((char *)value));
+                g_conf_write_flag = 1;
             }
         }
         break;
@@ -282,6 +281,7 @@ _flash_config_read_one(uint8_t *value, flash_conf_manager_t *conf)
             uint32_t tmp = atoi((char *)value);
             if(tmp != *(uint32_t *)(conf->value)) {
                 *(uint32_t *)(conf->value) = tmp;
+                g_conf_write_flag = 1;
             }
         }
         break;
@@ -290,6 +290,7 @@ _flash_config_read_one(uint8_t *value, flash_conf_manager_t *conf)
             uint16_t tmp = atoi((char *)value);
             if(tmp != *(uint16_t *)(conf->value)) {
                 *(uint16_t *)(conf->value) = tmp;
+                g_conf_write_flag = 1;
             }
         }
         break;
@@ -298,6 +299,7 @@ _flash_config_read_one(uint8_t *value, flash_conf_manager_t *conf)
             uint8_t tmp = atoi((char *)value);
             if(tmp != *(uint8_t *)(conf->value)) {
                 *(uint8_t *)(conf->value) = tmp;
+                g_conf_write_flag = 1;
             }
         }
         break;
@@ -315,9 +317,10 @@ flash_config_read_one(uint8_t *name, uint8_t *value)
     for(i = 0; i < FLASH_CONFIG_MAX_NUM; i++) {
         if(g_conf_manager[i].name && !strcmp((char *)name, (char *)g_conf_manager[i].name)) {
             _flash_config_read_one(value, &g_conf_manager[i]);
+            return 0;
         }
     }
-    return 0;
+    return -1;
 }
 
 /*
@@ -355,7 +358,6 @@ flash_config_read(void)
         if(len < 0) {
             break;
         }
-        log_debug("read a line, len = %d\r\n", len);
         if(!parse_config_name_value(buf, len, &name, &value)) {
             CONFIG_PRINTF(">>> %s=%s\r\n", name, value);
             flash_config_read_one(name, value);
@@ -365,9 +367,20 @@ flash_config_read(void)
 
 end:
     log_debug("read config from flash over.\r\n");
+    g_conf_write_flag = 0;
     hal_fs_close(&fs);
     return ret;
     
+}
+
+int32_t FLASH_CONFIG_ATTR
+flash_config_modify(uint8_t *name, uint8_t *value)
+{
+    if(NULL == name || NULL == value) {
+        return -1;
+    }
+
+    return flash_config_read_one(name, value);
 }
 
 int32_t FLASH_CONFIG_ATTR
@@ -394,7 +407,7 @@ flash_config_init(void)
         g_config_addr = FLASH_CONFIG_ADDR_BAK;
     }
 
-    log_debug("current config addr = 0x%x\r\n", g_config_addr);
+    log_debug("The config at flash addr = 0x%x\r\n", g_config_addr);
     hal_fs_close(&fs);
     return flash_config_read();
     
