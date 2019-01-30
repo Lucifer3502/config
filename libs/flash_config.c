@@ -142,6 +142,7 @@ flash_config_write(void)
         ret = -1;
         goto end;
     }
+    log_debug("write config to flash addr = 0x%x...\r\n", fs.addr);
     hal_fs_lseek(&fs, CONFIG_STRLEN(FLASH_CONFIG_HEAD_TAG));
     for(i = 0; i < FLASH_CONFIG_MAX_NUM; i++) {
         if(g_conf_manager[i].name) {
@@ -407,7 +408,7 @@ flash_config_init(void)
         g_config_addr = FLASH_CONFIG_ADDR_BAK;
     }
 
-    log_debug("The config at flash addr = 0x%x\r\n", g_config_addr);
+    log_debug("The config locate at flash addr = 0x%x\r\n", g_config_addr);
     hal_fs_close(&fs);
     return flash_config_read();
     
