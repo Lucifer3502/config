@@ -392,6 +392,7 @@ flash_config_init(void)
     uint8_t buf[FLASH_CONFIG_LINE_LEN];
     uint32_t buf_len = FLASH_CONFIG_LINE_LEN;
     
+    hal_mutex_init(&g_conf_mutex);
     if(hal_fs_open(&fs, FLASH_CONFIG_ADDR_DEF, FLASH_CONFIG_SCALE)) {
         log_error("open flash error\r\n");
         ret = -1;
